@@ -1,4 +1,4 @@
-.PHONY: install install-dev run test lint format typecheck clean docker-up docker-down migrate
+.PHONY: install install-dev run test lint format typecheck clean docker-up docker-down docker-logs migrate
 
 install:
 	pip install -e .
@@ -31,10 +31,13 @@ clean:
 	rm -rf dist/ build/ *.egg-info
 
 docker-up:
-	docker compose -f docker/docker-compose.yml up -d --build
+	docker compose up -d --build
 
 docker-down:
-	docker compose -f docker/docker-compose.yml down -v
+	docker compose down -v
+
+docker-logs:
+	docker compose logs -f
 
 migrate:
 	alembic upgrade head

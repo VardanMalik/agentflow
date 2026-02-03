@@ -27,9 +27,10 @@ COPY src/ ./src/
 
 USER appuser
 
-EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD ["python", "-c", "import subprocess, sys; r = subprocess.run(['celery', '-A', 'agentflow.worker', 'inspect', 'ping', '--timeout', '3'], capture_output=True); sys.exit(0 if r.returncode == 0 else 1)"]
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
-
-CMD ["uvicorn", "agentflow.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+CMD ["celery", "-A", "agentflow.worker", "worker", \
+     "--loglevel=info", \
+     "--concurrency=4", \
+     "--max-tasks-per-child=100"]
