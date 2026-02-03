@@ -53,7 +53,7 @@ def create_app() -> FastAPI:
 
 def _register_routes(app: FastAPI) -> None:
     """Register API routers."""
-    from agentflow.api.routes import router as api_router
+    from agentflow.api.router import router as api_router
 
     app.include_router(api_router, prefix="/api/v1")
 
