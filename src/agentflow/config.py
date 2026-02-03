@@ -39,6 +39,13 @@ class Settings(BaseSettings):
     # Celery
     celery_broker_url: str = "redis://localhost:6379/1"
     celery_result_backend: str = "redis://localhost:6379/2"
+    celery_task_default_queue: str = "default"
+    celery_task_default_retry_delay: int = 60
+    celery_task_max_retries: int = 3
+    celery_task_soft_time_limit: int = 300
+    celery_task_time_limit: int = 600
+    celery_result_expires: int = 86400
+    celery_worker_prefetch_multiplier: int = 1
 
     # LLM
     openai_api_key: str = ""
