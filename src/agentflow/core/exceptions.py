@@ -77,3 +77,29 @@ class ValidationError(AgentFlowError):
     def __init__(self, errors: list[str]) -> None:
         self.errors = errors
         super().__init__(f"Validation failed: {'; '.join(errors)}")
+
+
+class CircuitOpenError(AgentFlowError):
+    """Raised when a circuit breaker is in the OPEN state and rejects a call."""
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+        super().__init__(f"Circuit breaker '{name}' is OPEN — call rejected")
+
+
+class BulkheadFullError(AgentFlowError):
+    """Raised when a bulkhead has no capacity and rejects a call."""
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+        super().__init__(f"Bulkhead '{name}' is full — call rejected")
+
+
+class RetryExhaustedError(AgentFlowError):
+    """Raised when all retry attempts have been exhausted."""
+
+    def __init__(self, attempts: int, last_error: BaseException | None = None) -> None:
+        self.attempts = attempts
+        self.last_error = last_error
+        detail = f": {last_error}" if last_error is not None else ""
+        super().__init__(f"Retry exhausted after {attempts} attempt(s){detail}")
