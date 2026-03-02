@@ -1,13 +1,18 @@
 """AgentFlow application entrypoint."""
 
-from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 import structlog
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
+from agentflow.api.middleware import LoggingMiddleware, MetricsMiddleware, RequestTracingMiddleware
 from agentflow.config import get_settings
+from agentflow.observability.logging_config import configure_logging
+from agentflow.observability.metrics import MetricsCollector
+from agentflow.observability.tracing import TracingConfig, TracingProvider
 
 logger = structlog.get_logger()
 
@@ -16,13 +21,32 @@ logger = structlog.get_logger()
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Handle application startup and shutdown events."""
     settings = get_settings()
+
+    configure_logging(
+        level=settings.log_level,
+        environment=settings.environment,
+        json_output=settings.environment == "production",
+    )
+
+    TracingProvider.setup(
+        TracingConfig(
+            service_name=settings.otel_service_name,
+            exporter_endpoint=settings.otel_exporter_endpoint,
+        )
+    )
+
+    MetricsCollector.get_instance()
+
     await logger.ainfo(
         "Starting AgentFlow",
         version=settings.app_version,
         environment=settings.environment,
     )
+
     yield
+
     await logger.ainfo("Shutting down AgentFlow")
+    TracingProvider.shutdown()
 
 
 def create_app() -> FastAPI:
@@ -38,6 +62,11 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    # Middleware is applied in reverse add order: last added = outermost.
+    # Desired request order: CORS → RequestTracing → Logging → Metrics → handler
+    app.add_middleware(MetricsMiddleware)
+    app.add_middleware(LoggingMiddleware)
+    app.add_middleware(RequestTracingMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"] if settings.debug else [],
@@ -56,6 +85,10 @@ def _register_routes(app: FastAPI) -> None:
     from agentflow.api.router import router as api_router
 
     app.include_router(api_router, prefix="/api/v1")
+
+    @app.get("/metrics", include_in_schema=False)
+    async def metrics() -> Response:
+        return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 app = create_app()
