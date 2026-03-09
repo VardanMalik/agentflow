@@ -2,10 +2,11 @@
 
 from fastapi import APIRouter
 
-from agentflow.api import agents, health, workflows
+from agentflow.api import agents, dashboard, health, workflows
 
 router = APIRouter()
 
 router.include_router(health.router)
 router.include_router(workflows.router, prefix="/workflows")
 router.include_router(agents.router, prefix="/agents")
+router.include_router(dashboard.router)

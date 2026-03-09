@@ -16,6 +16,29 @@ from agentflow.observability.tracing import TracingConfig, TracingProvider
 
 logger = structlog.get_logger()
 
+_OPENAPI_TAGS = [
+    {
+        "name": "workflows",
+        "description": "Create, execute, monitor, and manage workflows.",
+    },
+    {
+        "name": "agents",
+        "description": "Register and interact with AI agents.",
+    },
+    {
+        "name": "dashboard",
+        "description": "Aggregated system statistics and health overview.",
+    },
+    {
+        "name": "websocket",
+        "description": "Real-time event streaming over WebSocket connections.",
+    },
+    {
+        "name": "health",
+        "description": "Application liveness and readiness probes.",
+    },
+]
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -37,6 +60,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     MetricsCollector.get_instance()
 
+    # Ensure WebSocket singletons are initialised before accepting connections.
+    from agentflow.api.websocket import connection_manager, event_bus  # noqa: F401
+
     await logger.ainfo(
         "Starting AgentFlow",
         version=settings.app_version,
@@ -56,9 +82,14 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title=settings.app_name,
         version=settings.app_version,
-        description="Distributed AI Agent Orchestration Platform",
+        description=(
+            "**AgentFlow** is a distributed AI agent orchestration platform.\n\n"
+            "Use the REST API to define and execute multi-step agent workflows, "
+            "stream real-time events over WebSocket, and monitor system health."
+        ),
         docs_url="/docs" if settings.debug else None,
         redoc_url="/redoc" if settings.debug else None,
+        openapi_tags=_OPENAPI_TAGS,
         lifespan=lifespan,
     )
 
@@ -83,8 +114,11 @@ def create_app() -> FastAPI:
 def _register_routes(app: FastAPI) -> None:
     """Register API routers."""
     from agentflow.api.router import router as api_router
+    from agentflow.api.websocket import router as ws_router
 
     app.include_router(api_router, prefix="/api/v1")
+    # WebSocket endpoints live at root so WS clients use /ws and /ws/{workflow_id}.
+    app.include_router(ws_router)
 
     @app.get("/metrics", include_in_schema=False)
     async def metrics() -> Response:
