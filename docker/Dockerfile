@@ -1,6 +1,11 @@
 # ---------- base ----------
 FROM python:3.11-slim AS base
 
+LABEL org.opencontainers.image.title="AgentFlow API" \
+      org.opencontainers.image.description="Distributed AI Agent Orchestration Platform - API Service" \
+      org.opencontainers.image.source="https://github.com/agentflow/agentflow" \
+      org.opencontainers.image.licenses="MIT"
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \

@@ -7,14 +7,30 @@ services:
       - "${PORT:-8000}:8000"
     env_file:
       - .env
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     restart: unless-stopped
     networks:
       - agentflow
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+        reservations:
+          memory: 256M
+          cpus: "0.25"
 
   worker:
     build:
@@ -22,14 +38,59 @@ services:
       dockerfile: docker/Dockerfile.worker
     env_file:
       - .env
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import subprocess, sys; r = subprocess.run(['celery', '-A', 'agentflow.worker', 'inspect', 'ping', '--timeout', '3'], capture_output=True); sys.exit(0 if r.returncode == 0 else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     restart: unless-stopped
     networks:
       - agentflow
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "2.0"
+        reservations:
+          memory: 512M
+          cpus: "0.5"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - agentflow
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.25"
+        reservations:
+          memory: 64M
+          cpus: "0.05"
 
   postgres:
     image: postgres:16-alpine
@@ -50,6 +111,14 @@ services:
     restart: unless-stopped
     networks:
       - agentflow
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+        reservations:
+          memory: 256M
+          cpus: "0.25"
 
   redis:
     image: redis:7-alpine
@@ -67,6 +136,14 @@ services:
     restart: unless-stopped
     networks:
       - agentflow
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+          cpus: "0.5"
+        reservations:
+          memory: 128M
+          cpus: "0.1"
 
   prometheus:
     image: prom/prometheus:latest
@@ -74,19 +151,34 @@ services:
       - "9090:9090"
     volumes:
       - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheusdata:/prometheus
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.retention.time=15d"
     depends_on:
       - api
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
     networks:
       - agentflow
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+        reservations:
+          memory: 256M
+          cpus: "0.1"
 
   grafana:
     image: grafana/grafana:latest
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       GF_SECURITY_ADMIN_PASSWORD: admin
       GF_USERS_ALLOW_SIGN_UP: "false"
@@ -95,14 +187,29 @@ services:
       - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
     depends_on:
       - prometheus
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     restart: unless-stopped
     networks:
       - agentflow
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+        reservations:
+          memory: 128M
+          cpus: "0.1"
 
 volumes:
   pgdata:
   redisdata:
   grafanadata:
+  prometheusdata:
 
 networks:
   agentflow:
