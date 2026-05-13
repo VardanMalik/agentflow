@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { useEffect, useRef, useState, useCallback } from 'react'
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? '/api'
+const BASE_URL = import.meta.env.VITE_API_URL ?? '/api/v1'
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,
@@ -77,14 +77,21 @@ export interface DLQResponse {
 }
 
 export interface DashboardStats {
-  total_workflows: number
-  running_workflows: number
-  completed_workflows: number
-  failed_workflows: number
-  success_rate: number
-  avg_duration_ms: number
-  active_agents: number
-  dlq_size: number
+  workflows: {
+    total: number
+    completed: number
+    failed: number
+    running: number
+    success_rate_pct: number
+  }
+  agents: {
+    total: number
+    active: number
+  }
+  performance: {
+    avg_workflow_duration_ms: number
+  }
+  generated_at: string
 }
 
 export interface HealthStatus {
@@ -104,13 +111,6 @@ export interface RecentActivity {
   status: string
 }
 
-export interface ThroughputPoint {
-  timestamp: string
-  completed: number
-  failed: number
-  running: number
-}
-
 // ─── API Methods ─────────────────────────────────────────────────────────────
 
 export const api = {
@@ -119,7 +119,7 @@ export const api = {
     page?: number
     page_size?: number
     status?: string
-  }) => apiClient.get<WorkflowListResponse>('/workflows', { params }).then((r) => r.data),
+  }) => apiClient.get<unknown>('/workflows', { params }).then((r) => r.data),
 
   getWorkflow: (id: string) =>
     apiClient.get<Workflow>(`/workflows/${id}`).then((r) => r.data),
@@ -135,11 +135,11 @@ export const api = {
 
   // Agents
   getAgentTypes: () =>
-    apiClient.get<AgentType[]>('/agents/types').then((r) => r.data),
+    apiClient.get<unknown>('/agents/types').then((r) => r.data),
 
   // DLQ
   getDLQ: (params?: { page?: number; page_size?: number }) =>
-    apiClient.get<DLQResponse>('/dlq', { params }).then((r) => r.data),
+    apiClient.get<unknown>('/dlq', { params }).then((r) => r.data),
 
   retryDLQEntry: (id: string) =>
     apiClient.post(`/dlq/${id}/retry`).then((r) => r.data),
@@ -155,10 +155,9 @@ export const api = {
     apiClient.get<DashboardStats>('/dashboard/stats').then((r) => r.data),
 
   getRecentActivity: (limit = 10) =>
-    apiClient.get<RecentActivity[]>('/dashboard/recent', { params: { limit } }).then((r) => r.data),
-
-  getThroughput: (window_minutes = 60) =>
-    apiClient.get<ThroughputPoint[]>('/dashboard/throughput', { params: { window_minutes } }).then((r) => r.data),
+    apiClient
+      .get<unknown>('/dashboard/recent', { params: { limit } })
+      .then((r) => r.data),
 
   getHealth: () =>
     apiClient.get<HealthStatus>('/health').then((r) => r.data),
