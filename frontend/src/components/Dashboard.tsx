@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, Legend,
 } from 'recharts'
 import {
@@ -11,9 +11,9 @@ import {
   api,
   type DashboardStats,
   type RecentActivity,
-  type ThroughputPoint,
   type HealthStatus,
 } from '../api/client'
+import { toArray } from '../api/normalize'
 import StatsCard from './common/StatsCard'
 import StatusBadge from './common/StatusBadge'
 import { FullPageSpinner } from './common/LoadingSpinner'
@@ -29,41 +29,45 @@ function formatTime(ts: string) {
   return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-const CHART_TOOLTIP_STYLE = {
-  backgroundColor: '#0f172a',
-  border: '1px solid #1e293b',
-  borderRadius: '8px',
-  color: '#cbd5e1',
-  fontSize: '12px',
+interface SectionErrors {
+  stats: string | null
+  activity: string | null
+  health: string | null
+}
+
+const NO_ERRORS: SectionErrors = {
+  stats: null,
+  activity: null,
+  health: null,
 }
 
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [activity, setActivity] = useState<RecentActivity[]>([])
-  const [throughput, setThroughput] = useState<ThroughputPoint[]>([])
   const [health, setHealth] = useState<HealthStatus | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [errors, setErrors] = useState<SectionErrors>(NO_ERRORS)
+  const [loadedOnce, setLoadedOnce] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
-    setError(null)
-    try {
-      const [s, a, t, h] = await Promise.all([
-        api.getStats(),
-        api.getRecentActivity(8),
-        api.getThroughput(60),
-        api.getHealth(),
-      ])
-      setStats(s)
-      setActivity(a)
-      setThroughput(t)
-      setHealth(h)
-    } catch (e) {
-      setError((e as Error).message)
-    } finally {
-      setLoading(false)
-    }
+    const [s, a, h] = await Promise.allSettled([
+      api.getStats(),
+      api.getRecentActivity(8),
+      api.getHealth(),
+    ])
+
+    const next: SectionErrors = { ...NO_ERRORS }
+    if (s.status === 'fulfilled') setStats(s.value)
+    else next.stats = s.reason?.message ?? 'Failed to load stats'
+    if (a.status === 'fulfilled') setActivity(toArray<RecentActivity>(a.value))
+    else next.activity = a.reason?.message ?? 'Failed to load recent activity'
+    if (h.status === 'fulfilled') setHealth(h.value)
+    else next.health = h.reason?.message ?? 'Failed to load health'
+
+    setErrors(next)
+    setLoading(false)
+    setLoadedOnce(true)
   }, [])
 
   useEffect(() => {
@@ -72,10 +76,14 @@ export default function Dashboard() {
     return () => clearInterval(interval)
   }, [load])
 
-  if (loading && !stats) return <FullPageSpinner label="Loading dashboard..." />
-  if (error && !stats) return <ErrorMessage message={error} onRetry={load} />
+  if (loading && !loadedOnce) return <FullPageSpinner label="Loading dashboard..." />
 
-  const successRate = stats ? Math.round(stats.success_rate * 100) : 0
+  const totalWorkflows = stats?.workflows?.total ?? 0
+  const runningWorkflows = stats?.workflows?.running ?? 0
+  const failedWorkflows = stats?.workflows?.failed ?? 0
+  const successRate = Math.round(stats?.workflows?.success_rate_pct ?? 0)
+  const activeAgents = stats?.agents?.active ?? 0
+  const avgDurationMs = stats?.performance?.avg_workflow_duration_ms ?? 0
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -91,34 +99,34 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {error && <ErrorMessage message={error} onRetry={load} compact />}
-
       {/* Stats Grid */}
-      {stats && (
+      {errors.stats && !stats ? (
+        <ErrorMessage message={errors.stats} onRetry={load} compact />
+      ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatsCard
             title="Total Workflows"
-            value={stats.total_workflows.toLocaleString()}
+            value={totalWorkflows.toLocaleString()}
             icon={GitBranch}
             accent="blue"
-            subtitle={`${stats.running_workflows} running`}
+            subtitle={`${runningWorkflows} running`}
           />
           <StatsCard
             title="Success Rate"
             value={`${successRate}%`}
             icon={CheckCircle2}
             accent="green"
-            subtitle={`${stats.failed_workflows} failed`}
+            subtitle={`${failedWorkflows} failed`}
           />
           <StatsCard
             title="Active Agents"
-            value={stats.active_agents}
+            value={activeAgents}
             icon={Cpu}
             accent="violet"
           />
           <StatsCard
             title="Avg Duration"
-            value={formatDuration(stats.avg_duration_ms)}
+            value={formatDuration(avgDurationMs)}
             icon={Timer}
             accent="yellow"
           />
@@ -134,61 +142,13 @@ export default function Dashboard() {
             Workflow Throughput
             <span className="ml-auto text-xs font-normal text-slate-500">Last 60 min</span>
           </h2>
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={throughput} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis
-                dataKey="timestamp"
-                tickFormatter={formatTime}
-                tick={{ fontSize: 11, fill: '#64748b' }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tick={{ fontSize: 11, fill: '#64748b' }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <Tooltip
-                contentStyle={CHART_TOOLTIP_STYLE}
-                labelFormatter={(v) => formatTime(v as string)}
-              />
-              <Legend
-                wrapperStyle={{ fontSize: '12px', color: '#94a3b8' }}
-                iconType="circle"
-                iconSize={8}
-              />
-              <Line
-                type="monotone"
-                dataKey="completed"
-                stroke="#6366f1"
-                strokeWidth={2}
-                dot={false}
-                activeDot={{ r: 4, fill: '#6366f1' }}
-              />
-              <Line
-                type="monotone"
-                dataKey="failed"
-                stroke="#f87171"
-                strokeWidth={2}
-                dot={false}
-                activeDot={{ r: 4, fill: '#f87171' }}
-              />
-              <Line
-                type="monotone"
-                dataKey="running"
-                stroke="#a78bfa"
-                strokeWidth={2}
-                strokeDasharray="4 2"
-                dot={false}
-                activeDot={{ r: 4, fill: '#a78bfa' }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          <div className="flex items-center justify-center h-[220px]">
+            <p className="text-sm text-slate-500">Throughput metrics coming soon</p>
+          </div>
         </div>
 
         {/* System Health */}
-        {health && (
+        {health ? (
           <div className="glass rounded-xl p-5">
             <h2 className="section-header mb-5">
               <Shield className="w-4 h-4 text-brand-400" />
@@ -198,7 +158,7 @@ export default function Dashboard() {
               {/* Overall status */}
               <div className="flex items-center justify-between py-2.5 border-b border-slate-800">
                 <span className="text-sm text-slate-400">Overall Status</span>
-                <StatusBadge status={health.status} />
+                <StatusBadge status={health?.status ?? 'unknown'} />
               </div>
 
               {/* Circuit Breaker */}
@@ -206,7 +166,7 @@ export default function Dashboard() {
                 <div>
                   <p className="text-sm text-slate-300 font-medium">Circuit Breaker</p>
                 </div>
-                <StatusBadge status={health.circuit_breaker} />
+                <StatusBadge status={health?.circuit_breaker ?? 'unknown'} />
               </div>
 
               {/* Bulkhead */}
@@ -214,14 +174,18 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-sm text-slate-300 font-medium">Bulkhead</p>
                   <span className="text-xs text-slate-500">
-                    {health.bulkhead.active}/{health.bulkhead.max} slots
+                    {health?.bulkhead?.active ?? 0}/{health?.bulkhead?.max ?? 0} slots
                   </span>
                 </div>
                 <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-gradient-to-r from-brand-500 to-violet-500 rounded-full transition-all"
                     style={{
-                      width: `${Math.min(100, (health.bulkhead.active / health.bulkhead.max) * 100)}%`,
+                      width: `${
+                        (health?.bulkhead?.max ?? 0) > 0
+                          ? Math.min(100, ((health?.bulkhead?.active ?? 0) / (health?.bulkhead?.max ?? 1)) * 100)
+                          : 0
+                      }%`,
                     }}
                   />
                 </div>
@@ -232,10 +196,10 @@ export default function Dashboard() {
                 <p className="text-sm text-slate-300 font-medium">Dead Letter Queue</p>
                 <span
                   className={`text-sm font-semibold tabular-nums ${
-                    (stats?.dlq_size ?? 0) > 0 ? 'text-red-400' : 'text-emerald-400'
+                    (health?.dlq_size ?? 0) > 0 ? 'text-red-400' : 'text-emerald-400'
                   }`}
                 >
-                  {stats?.dlq_size ?? 0}
+                  {health?.dlq_size ?? 0}
                 </span>
               </div>
 
@@ -243,10 +207,22 @@ export default function Dashboard() {
               <div className="flex items-center justify-between pt-1">
                 <p className="text-sm text-slate-400">Uptime</p>
                 <span className="text-sm text-slate-300 font-mono">
-                  {Math.floor(health.uptime_seconds / 3600)}h{' '}
-                  {Math.floor((health.uptime_seconds % 3600) / 60)}m
+                  {Math.floor((health?.uptime_seconds ?? 0) / 3600)}h{' '}
+                  {Math.floor(((health?.uptime_seconds ?? 0) % 3600) / 60)}m
                 </span>
               </div>
+            </div>
+          </div>
+        ) : (
+          <div className="glass rounded-xl p-5">
+            <h2 className="section-header mb-5">
+              <Shield className="w-4 h-4 text-brand-400" />
+              System Health
+            </h2>
+            <div className="flex items-center justify-center h-[220px]">
+              <p className="text-sm text-slate-500">
+                {errors.health ?? 'Health data unavailable'}
+              </p>
             </div>
           </div>
         )}
@@ -261,24 +237,26 @@ export default function Dashboard() {
             Recent Activity
           </h2>
           <div className="space-y-0">
-            {activity.length === 0 ? (
-              <p className="text-sm text-slate-500 py-8 text-center">No recent activity</p>
+            {!Array.isArray(activity) || activity.length === 0 ? (
+              <p className="text-sm text-slate-500 py-8 text-center">
+                {errors.activity ?? 'No recent activity'}
+              </p>
             ) : (
-              activity.map((item, idx) => (
+              (activity ?? []).map((item, idx) => (
                 <div
-                  key={`${item.id}-${idx}`}
+                  key={`${item?.id ?? idx}-${idx}`}
                   className="flex items-center gap-3 py-3 border-b border-slate-800/60 last:border-0 table-row-hover -mx-2 px-2 rounded-lg"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-slate-200 font-medium truncate">
-                      {item.workflow_name}
+                      {item?.workflow_name ?? 'Unknown workflow'}
                     </p>
-                    <p className="text-xs text-slate-500 mt-0.5">{item.event}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{item?.event ?? ''}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <StatusBadge status={item.status} size="sm" />
+                    <StatusBadge status={item?.status ?? 'unknown'} size="sm" />
                     <span className="text-xs text-slate-600 font-mono">
-                      {formatTime(item.timestamp)}
+                      {item?.timestamp ? formatTime(item.timestamp) : ''}
                     </span>
                   </div>
                 </div>
@@ -301,12 +279,18 @@ function AgentPerformanceChart() {
 
   useEffect(() => {
     api.getAgentTypes().then((agents) => {
+      const list = toArray<{
+        type?: string
+        success_count?: number
+        failure_count?: number
+        avg_duration_ms?: number
+      }>(agents)
       setData(
-        agents.slice(0, 6).map((a) => ({
-          type: a.type.replace(/_agent$/, '').replace(/_/g, ' '),
-          success: a.success_count,
-          failure: a.failure_count,
-          avg_ms: Math.round(a.avg_duration_ms),
+        list.slice(0, 6).map((a) => ({
+          type: (a?.type ?? 'unknown').replace(/_agent$/, '').replace(/_/g, ' '),
+          success: a?.success_count ?? 0,
+          failure: a?.failure_count ?? 0,
+          avg_ms: Math.round(a?.avg_duration_ms ?? 0),
         })),
       )
     }).catch(() => {})

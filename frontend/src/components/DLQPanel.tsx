@@ -4,6 +4,7 @@ import {
   Clock, Info,
 } from 'lucide-react'
 import { api, type DLQEntry } from '../api/client'
+import { toArray, toTotal } from '../api/normalize'
 import { FullPageSpinner } from './common/LoadingSpinner'
 import ErrorMessage from './common/ErrorMessage'
 
@@ -38,7 +39,7 @@ function DetailModal({ entry, onClose, onRetry, onPurge }: DetailModalProps) {
         <div className="flex items-start justify-between p-5 border-b border-slate-800">
           <div>
             <h3 className="font-semibold text-slate-100">DLQ Entry Details</h3>
-            <p className="text-xs text-slate-500 font-mono mt-0.5">{entry.id}</p>
+            <p className="text-xs text-slate-500 font-mono mt-0.5">{entry?.id ?? '—'}</p>
           </div>
           <button onClick={onClose} className="btn-ghost p-1.5">
             <X className="w-4 h-4" />
@@ -51,9 +52,9 @@ function DetailModal({ entry, onClose, onRetry, onPurge }: DetailModalProps) {
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-slate-950/40 rounded-lg p-3">
               <p className="text-xs text-slate-500 mb-1">Workflow ID</p>
-              <p className="text-sm text-slate-300 font-mono truncate">{entry.workflow_id}</p>
+              <p className="text-sm text-slate-300 font-mono truncate">{entry?.workflow_id ?? '—'}</p>
             </div>
-            {entry.step_id && (
+            {entry?.step_id && (
               <div className="bg-slate-950/40 rounded-lg p-3">
                 <p className="text-xs text-slate-500 mb-1">Step ID</p>
                 <p className="text-sm text-slate-300 font-mono truncate">{entry.step_id}</p>
@@ -61,11 +62,13 @@ function DetailModal({ entry, onClose, onRetry, onPurge }: DetailModalProps) {
             )}
             <div className="bg-slate-950/40 rounded-lg p-3">
               <p className="text-xs text-slate-500 mb-1">Retry Count</p>
-              <p className="text-sm font-semibold text-yellow-400">{entry.retry_count}</p>
+              <p className="text-sm font-semibold text-yellow-400">{entry?.retry_count ?? 0}</p>
             </div>
             <div className="bg-slate-950/40 rounded-lg p-3">
               <p className="text-xs text-slate-500 mb-1">Created At</p>
-              <p className="text-sm text-slate-300">{formatDate(entry.created_at)}</p>
+              <p className="text-sm text-slate-300">
+                {entry?.created_at ? formatDate(entry.created_at) : '—'}
+              </p>
             </div>
           </div>
 
@@ -75,7 +78,9 @@ function DetailModal({ entry, onClose, onRetry, onPurge }: DetailModalProps) {
               Error
             </p>
             <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3">
-              <p className="text-sm text-red-300/90 font-mono leading-relaxed">{entry.error}</p>
+              <p className="text-sm text-red-300/90 font-mono leading-relaxed">
+                {entry?.error ?? 'Unknown error'}
+              </p>
             </div>
           </div>
 
@@ -85,7 +90,7 @@ function DetailModal({ entry, onClose, onRetry, onPurge }: DetailModalProps) {
               Payload
             </p>
             <pre className="text-xs text-slate-400 font-mono bg-slate-950/60 border border-slate-800 rounded-lg p-3 overflow-auto max-h-48 leading-relaxed">
-              {JSON.stringify(entry.payload, null, 2)}
+              {JSON.stringify(entry?.payload ?? {}, null, 2)}
             </pre>
           </div>
         </div>
@@ -124,10 +129,12 @@ export default function DLQPanel() {
     setError(null)
     try {
       const data = await api.getDLQ({ page, page_size: PAGE_SIZE })
-      setEntries(data.entries)
-      setTotal(data.total)
+      const list = toArray<DLQEntry>(data)
+      setEntries(list)
+      setTotal(toTotal(data, list.length))
     } catch (e) {
       setError((e as Error).message)
+      setEntries([])
     } finally {
       setLoading(false)
     }
@@ -183,7 +190,7 @@ export default function DLQPanel() {
         <div>
           <h1 className="text-2xl font-bold text-slate-100">Dead Letter Queue</h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            {total} failed {total === 1 ? 'entry' : 'entries'} awaiting action
+            {total ?? 0} failed {total === 1 ? 'entry' : 'entries'} awaiting action
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -224,7 +231,7 @@ export default function DLQPanel() {
       {error && <ErrorMessage message={error} onRetry={load} compact />}
 
       {/* Info banner if empty */}
-      {!loading && total === 0 && (
+      {!loading && (total ?? 0) === 0 && (
         <div className="flex flex-col items-center justify-center min-h-[300px] gap-4 glass rounded-xl">
           <div className="p-4 rounded-full bg-emerald-400/10 border border-emerald-500/20">
             <AlertTriangle className="w-8 h-8 text-emerald-400" />
@@ -237,7 +244,7 @@ export default function DLQPanel() {
       )}
 
       {/* Table */}
-      {(loading || total > 0) && (
+      {(loading || (total ?? 0) > 0) && (
         <div className="glass rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
@@ -260,80 +267,84 @@ export default function DLQPanel() {
               </tr>
             </thead>
             <tbody>
-              {loading && entries.length === 0 ? (
+              {loading && (entries ?? []).length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-16">
                     <FullPageSpinner />
                   </td>
                 </tr>
               ) : (
-                entries.map((entry) => (
-                  <tr
-                    key={entry.id}
-                    className="border-b border-slate-800/60 last:border-0 table-row-hover group"
-                  >
-                    <td className="px-5 py-3.5">
-                      <p className="text-slate-200 font-medium font-mono text-xs truncate max-w-[160px]">
-                        {entry.workflow_id}
-                      </p>
-                      {entry.step_id && (
-                        <p className="text-xs text-slate-600 font-mono mt-0.5 truncate max-w-[160px]">
-                          step: {entry.step_id}
+                (entries ?? []).map((entry, idx) => {
+                  const entryId = entry?.id ?? `dlq-${idx}`
+                  const retryCount = entry?.retry_count ?? 0
+                  return (
+                    <tr
+                      key={entryId}
+                      className="border-b border-slate-800/60 last:border-0 table-row-hover group"
+                    >
+                      <td className="px-5 py-3.5">
+                        <p className="text-slate-200 font-medium font-mono text-xs truncate max-w-[160px]">
+                          {entry?.workflow_id ?? '—'}
                         </p>
-                      )}
-                    </td>
-                    <td className="px-4 py-3.5 hidden md:table-cell">
-                      <p className="text-xs text-red-400/80 truncate max-w-[280px]">
-                        {entry.error}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-1.5">
-                        <RotateCcw className="w-3.5 h-3.5 text-yellow-500/60" />
-                        <span
-                          className={`text-sm font-semibold tabular-nums ${
-                            entry.retry_count >= 3 ? 'text-red-400' : 'text-yellow-400'
-                          }`}
-                        >
-                          {entry.retry_count}
+                        {entry?.step_id && (
+                          <p className="text-xs text-slate-600 font-mono mt-0.5 truncate max-w-[160px]">
+                            step: {entry.step_id}
+                          </p>
+                        )}
+                      </td>
+                      <td className="px-4 py-3.5 hidden md:table-cell">
+                        <p className="text-xs text-red-400/80 truncate max-w-[280px]">
+                          {entry?.error ?? 'Unknown error'}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-1.5">
+                          <RotateCcw className="w-3.5 h-3.5 text-yellow-500/60" />
+                          <span
+                            className={`text-sm font-semibold tabular-nums ${
+                              retryCount >= 3 ? 'text-red-400' : 'text-yellow-400'
+                            }`}
+                          >
+                            {retryCount}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5 hidden lg:table-cell">
+                        <span className="text-xs text-slate-500 flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {entry?.created_at ? formatDate(entry.created_at) : '—'}
                         </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3.5 hidden lg:table-cell">
-                      <span className="text-xs text-slate-500 flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {formatDate(entry.created_at)}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          title="View details"
-                          onClick={() => setSelected(entry)}
-                          className="btn-ghost p-1.5"
-                        >
-                          <Info className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          title="Retry"
-                          onClick={() => handleRetry(entry.id)}
-                          disabled={actionLoading === `retry-${entry.id}`}
-                          className="btn-ghost p-1.5 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          title="Purge"
-                          onClick={() => handlePurge(entry.id)}
-                          disabled={actionLoading === `purge-${entry.id}`}
-                          className="btn-danger p-1.5"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            title="View details"
+                            onClick={() => setSelected(entry)}
+                            className="btn-ghost p-1.5"
+                          >
+                            <Info className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            title="Retry"
+                            onClick={() => handleRetry(entryId)}
+                            disabled={actionLoading === `retry-${entryId}`}
+                            className="btn-ghost p-1.5 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            title="Purge"
+                            onClick={() => handlePurge(entryId)}
+                            disabled={actionLoading === `purge-${entryId}`}
+                            className="btn-danger p-1.5"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })
               )}
             </tbody>
           </table>
@@ -369,8 +380,8 @@ export default function DLQPanel() {
         <DetailModal
           entry={selected}
           onClose={() => setSelected(null)}
-          onRetry={() => handleRetry(selected.id)}
-          onPurge={() => handlePurge(selected.id)}
+          onRetry={() => selected?.id && handleRetry(selected.id)}
+          onPurge={() => selected?.id && handlePurge(selected.id)}
         />
       )}
     </div>

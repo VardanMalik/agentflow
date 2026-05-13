@@ -4,6 +4,7 @@ import {
   GitBranch, Filter, Search,
 } from 'lucide-react'
 import { api, type Workflow } from '../api/client'
+import { toArray, toTotal } from '../api/normalize'
 import StatusBadge from './common/StatusBadge'
 import { FullPageSpinner } from './common/LoadingSpinner'
 import ErrorMessage from './common/ErrorMessage'
@@ -55,10 +56,12 @@ export default function WorkflowList({ onSelectWorkflow }: WorkflowListProps) {
         page_size: PAGE_SIZE,
         status: status || undefined,
       })
-      setWorkflows(data.workflows)
-      setTotal(data.total)
+      const list = toArray<Workflow>(data)
+      setWorkflows(list)
+      setTotal(toTotal(data, list.length))
     } catch (e) {
       setError((e as Error).message)
+      setWorkflows([])
     } finally {
       setLoading(false)
     }
@@ -85,12 +88,13 @@ export default function WorkflowList({ onSelectWorkflow }: WorkflowListProps) {
     }
   }
 
+  const safeWorkflows = Array.isArray(workflows) ? workflows : []
   const filtered = search.trim()
-    ? workflows.filter((w) =>
-        w.name.toLowerCase().includes(search.toLowerCase()) ||
-        w.id.toLowerCase().includes(search.toLowerCase()),
+    ? safeWorkflows.filter((w) =>
+        (w?.name ?? '').toLowerCase().includes(search.toLowerCase()) ||
+        (w?.id ?? '').toLowerCase().includes(search.toLowerCase()),
       )
-    : workflows
+    : safeWorkflows
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -99,7 +103,7 @@ export default function WorkflowList({ onSelectWorkflow }: WorkflowListProps) {
         <div>
           <h1 className="text-2xl font-bold text-slate-100">Workflows</h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            {total.toLocaleString()} total workflows
+            {(total ?? 0).toLocaleString()} total workflows
           </p>
         </div>
         <button onClick={load} className="btn-ghost" disabled={loading}>
@@ -162,13 +166,13 @@ export default function WorkflowList({ onSelectWorkflow }: WorkflowListProps) {
             </tr>
           </thead>
           <tbody>
-            {loading && workflows.length === 0 ? (
+            {loading && safeWorkflows.length === 0 ? (
               <tr>
                 <td colSpan={6} className="py-16">
                   <FullPageSpinner />
                 </td>
               </tr>
-            ) : filtered.length === 0 ? (
+            ) : (filtered ?? []).length === 0 ? (
               <tr>
                 <td colSpan={6}>
                   <div className="flex flex-col items-center justify-center py-16 gap-3">
@@ -178,84 +182,91 @@ export default function WorkflowList({ onSelectWorkflow }: WorkflowListProps) {
                 </td>
               </tr>
             ) : (
-              filtered.map((wf) => (
-                <tr
-                  key={wf.id}
-                  className="border-b border-slate-800/60 last:border-0 table-row-hover group"
-                >
-                  <td className="px-5 py-3.5">
-                    <div>
-                      <button
-                        onClick={() => onSelectWorkflow(wf.id)}
-                        className="font-medium text-slate-200 hover:text-brand-400 transition-colors text-left"
-                      >
-                        {wf.name}
-                      </button>
-                      <p className="text-xs text-slate-600 font-mono mt-0.5 truncate max-w-[200px]">
-                        {wf.id}
-                      </p>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <StatusBadge status={wf.status} />
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <span className="text-slate-400 tabular-nums">
-                      {wf.steps.filter((s) => s.status === 'completed').length}/
-                      {wf.steps.length}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3.5 hidden md:table-cell">
-                    <span className="text-slate-500 text-xs">{formatDate(wf.created_at)}</span>
-                  </td>
-                  <td className="px-4 py-3.5 hidden lg:table-cell">
-                    <span className="text-slate-400 font-mono text-xs">
-                      {formatDuration(wf.duration_ms)}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        title="View details"
-                        onClick={() => onSelectWorkflow(wf.id)}
-                        className="btn-ghost p-1.5"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                      </button>
-                      {(wf.status === 'pending' || wf.status === 'failed') && (
+              (filtered ?? []).map((wf, idx) => {
+                const wfId = wf?.id ?? `wf-${idx}`
+                const wfStatus = wf?.status ?? 'pending'
+                const steps = Array.isArray(wf?.steps) ? wf.steps : []
+                const completedSteps = steps.filter((s) => s?.status === 'completed').length
+                return (
+                  <tr
+                    key={wfId}
+                    className="border-b border-slate-800/60 last:border-0 table-row-hover group"
+                  >
+                    <td className="px-5 py-3.5">
+                      <div>
                         <button
-                          title="Execute"
-                          onClick={() => handleAction('execute', wf.id)}
-                          disabled={actionLoading === `execute-${wf.id}`}
-                          className="btn-ghost p-1.5 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-400/10"
+                          onClick={() => onSelectWorkflow(wfId)}
+                          className="font-medium text-slate-200 hover:text-brand-400 transition-colors text-left"
                         >
-                          <Play className="w-3.5 h-3.5" />
+                          {wf?.name ?? 'Untitled workflow'}
                         </button>
-                      )}
-                      {wf.status === 'running' && (
+                        <p className="text-xs text-slate-600 font-mono mt-0.5 truncate max-w-[200px]">
+                          {wfId}
+                        </p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <StatusBadge status={wfStatus} />
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <span className="text-slate-400 tabular-nums">
+                        {completedSteps}/{steps.length}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5 hidden md:table-cell">
+                      <span className="text-slate-500 text-xs">
+                        {wf?.created_at ? formatDate(wf.created_at) : '—'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5 hidden lg:table-cell">
+                      <span className="text-slate-400 font-mono text-xs">
+                        {formatDuration(wf?.duration_ms)}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
-                          title="Cancel"
-                          onClick={() => handleAction('cancel', wf.id)}
-                          disabled={actionLoading === `cancel-${wf.id}`}
-                          className="btn-danger p-1.5"
+                          title="View details"
+                          onClick={() => onSelectWorkflow(wfId)}
+                          className="btn-ghost p-1.5"
                         >
-                          <X className="w-3.5 h-3.5" />
+                          <Eye className="w-3.5 h-3.5" />
                         </button>
-                      )}
-                      {wf.status === 'failed' && (
-                        <button
-                          title="Retry"
-                          onClick={() => handleAction('retry', wf.id)}
-                          disabled={actionLoading === `retry-${wf.id}`}
-                          className="btn-ghost p-1.5 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10"
-                        >
-                          <RefreshCw className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))
+                        {(wfStatus === 'pending' || wfStatus === 'failed') && (
+                          <button
+                            title="Execute"
+                            onClick={() => handleAction('execute', wfId)}
+                            disabled={actionLoading === `execute-${wfId}`}
+                            className="btn-ghost p-1.5 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-400/10"
+                          >
+                            <Play className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {wfStatus === 'running' && (
+                          <button
+                            title="Cancel"
+                            onClick={() => handleAction('cancel', wfId)}
+                            disabled={actionLoading === `cancel-${wfId}`}
+                            className="btn-danger p-1.5"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {wfStatus === 'failed' && (
+                          <button
+                            title="Retry"
+                            onClick={() => handleAction('retry', wfId)}
+                            disabled={actionLoading === `retry-${wfId}`}
+                            className="btn-ghost p-1.5 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10"
+                          >
+                            <RefreshCw className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })
             )}
           </tbody>
         </table>
@@ -264,7 +275,7 @@ export default function WorkflowList({ onSelectWorkflow }: WorkflowListProps) {
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-5 py-3 border-t border-slate-800">
             <p className="text-xs text-slate-500">
-              Page {page} of {totalPages} &mdash; {total} workflows
+              Page {page} of {totalPages} &mdash; {total ?? 0} workflows
             </p>
             <div className="flex items-center gap-1">
               <button

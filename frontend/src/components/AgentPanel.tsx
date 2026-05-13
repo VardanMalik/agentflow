@@ -3,25 +3,30 @@ import {
   Cpu, CheckCircle2, XCircle, BarChart2, Zap, RefreshCw, TrendingUp,
 } from 'lucide-react'
 import { api, type AgentType } from '../api/client'
+import { toArray } from '../api/normalize'
 import { FullPageSpinner } from './common/LoadingSpinner'
 import ErrorMessage from './common/ErrorMessage'
 
-function formatDuration(ms: number) {
-  if (!ms) return '—'
-  if (ms < 1000) return `${Math.round(ms)}ms`
-  return `${(ms / 1000).toFixed(2)}s`
+function formatDuration(ms?: number) {
+  const value = ms ?? 0
+  if (!value) return '—'
+  if (value < 1000) return `${Math.round(value)}ms`
+  return `${(value / 1000).toFixed(2)}s`
 }
 
-function formatTokens(n: number) {
-  if (n < 1000) return n.toString()
-  if (n < 1_000_000) return `${(n / 1000).toFixed(1)}k`
-  return `${(n / 1_000_000).toFixed(2)}M`
+function formatTokens(n?: number) {
+  const value = n ?? 0
+  if (value < 1000) return value.toString()
+  if (value < 1_000_000) return `${(value / 1000).toFixed(1)}k`
+  return `${(value / 1_000_000).toFixed(2)}M`
 }
 
 function successRate(agent: AgentType) {
-  const total = agent.success_count + agent.failure_count
+  const success = agent?.success_count ?? 0
+  const failure = agent?.failure_count ?? 0
+  const total = success + failure
   if (!total) return null
-  return Math.round((agent.success_count / total) * 100)
+  return Math.round((success / total) * 100)
 }
 
 interface AgentCardProps {
@@ -30,8 +35,12 @@ interface AgentCardProps {
 
 function AgentCard({ agent }: AgentCardProps) {
   const rate = successRate(agent)
-  const total = agent.success_count + agent.failure_count
-  const successPct = total ? (agent.success_count / total) * 100 : 0
+  const successCount = agent?.success_count ?? 0
+  const failureCount = agent?.failure_count ?? 0
+  const executionCount = agent?.execution_count ?? 0
+  const totalTokens = agent?.total_tokens ?? 0
+  const total = successCount + failureCount
+  const successPct = total ? (successCount / total) * 100 : 0
 
   const rateColor =
     rate === null ? 'text-slate-500'
@@ -45,12 +54,13 @@ function AgentCard({ agent }: AgentCardProps) {
     : rate >= 70 ? 'bg-yellow-500'
     : 'bg-red-500'
 
-  const typeName = agent.type
+  const rawType = agent?.type ?? 'unknown'
+  const typeName = rawType
     .replace(/_agent$/, '')
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase())
 
-  const isActive = agent.execution_count > 0
+  const isActive = executionCount > 0
 
   return (
     <div className="glass rounded-xl p-5 hover:bg-slate-800/40 transition-colors group">
@@ -69,20 +79,20 @@ function AgentCard({ agent }: AgentCardProps) {
       </div>
 
       <h3 className="font-semibold text-slate-200 mb-0.5">{typeName}</h3>
-      <p className="text-xs text-slate-500 font-mono mb-4">{agent.type}</p>
+      <p className="text-xs text-slate-500 font-mono mb-4">{rawType}</p>
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="bg-slate-950/40 rounded-lg p-2.5">
           <p className="text-xs text-slate-500 mb-0.5">Executions</p>
           <p className="text-sm font-semibold text-slate-200 tabular-nums">
-            {agent.execution_count.toLocaleString()}
+            {executionCount.toLocaleString()}
           </p>
         </div>
         <div className="bg-slate-950/40 rounded-lg p-2.5">
           <p className="text-xs text-slate-500 mb-0.5">Avg Time</p>
           <p className="text-sm font-semibold text-slate-200 font-mono">
-            {formatDuration(agent.avg_duration_ms)}
+            {formatDuration(agent?.avg_duration_ms)}
           </p>
         </div>
         <div className="bg-slate-950/40 rounded-lg p-2.5 flex items-center gap-2">
@@ -90,7 +100,7 @@ function AgentCard({ agent }: AgentCardProps) {
           <div>
             <p className="text-xs text-slate-500">Success</p>
             <p className="text-sm font-semibold text-emerald-400 tabular-nums">
-              {agent.success_count.toLocaleString()}
+              {successCount.toLocaleString()}
             </p>
           </div>
         </div>
@@ -99,7 +109,7 @@ function AgentCard({ agent }: AgentCardProps) {
           <div>
             <p className="text-xs text-slate-500">Failed</p>
             <p className="text-sm font-semibold text-red-400 tabular-nums">
-              {agent.failure_count.toLocaleString()}
+              {failureCount.toLocaleString()}
             </p>
           </div>
         </div>
@@ -122,14 +132,14 @@ function AgentCard({ agent }: AgentCardProps) {
       </div>
 
       {/* Token usage */}
-      {agent.total_tokens > 0 && (
+      {totalTokens > 0 && (
         <div className="mt-3 pt-3 border-t border-slate-800/60 flex items-center justify-between">
           <span className="text-xs text-slate-500 flex items-center gap-1">
             <Zap className="w-3 h-3" />
             Token Usage
           </span>
           <span className="text-xs text-slate-400 font-mono">
-            {formatTokens(agent.total_tokens)}
+            {formatTokens(totalTokens)}
           </span>
         </div>
       )}
@@ -147,9 +157,10 @@ export default function AgentPanel() {
     setError(null)
     try {
       const data = await api.getAgentTypes()
-      setAgents(data)
+      setAgents(toArray<AgentType>(data))
     } catch (e) {
       setError((e as Error).message)
+      setAgents([])
     } finally {
       setLoading(false)
     }
@@ -157,13 +168,17 @@ export default function AgentPanel() {
 
   useEffect(() => { load() }, [load])
 
-  const totalExecutions = agents.reduce((s, a) => s + a.execution_count, 0)
-  const totalTokens = agents.reduce((s, a) => s + a.total_tokens, 0)
-  const overallSuccess = agents.reduce((s, a) => s + a.success_count, 0)
-  const overallTotal = agents.reduce((s, a) => s + a.success_count + a.failure_count, 0)
+  const safeAgents = Array.isArray(agents) ? agents : []
+  const totalExecutions = safeAgents.reduce((s, a) => s + (a?.execution_count ?? 0), 0)
+  const totalTokens = safeAgents.reduce((s, a) => s + (a?.total_tokens ?? 0), 0)
+  const overallSuccess = safeAgents.reduce((s, a) => s + (a?.success_count ?? 0), 0)
+  const overallTotal = safeAgents.reduce(
+    (s, a) => s + (a?.success_count ?? 0) + (a?.failure_count ?? 0),
+    0,
+  )
   const overallRate = overallTotal ? Math.round((overallSuccess / overallTotal) * 100) : null
 
-  if (loading && agents.length === 0) return <FullPageSpinner label="Loading agents..." />
+  if (loading && safeAgents.length === 0) return <FullPageSpinner label="Loading agents..." />
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -172,7 +187,7 @@ export default function AgentPanel() {
         <div>
           <h1 className="text-2xl font-bold text-slate-100">Agents</h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            {agents.length} agent {agents.length === 1 ? 'type' : 'types'} registered
+            {safeAgents.length} agent {safeAgents.length === 1 ? 'type' : 'types'} registered
           </p>
         </div>
         <button onClick={load} className="btn-ghost" disabled={loading}>
@@ -184,7 +199,7 @@ export default function AgentPanel() {
       {error && <ErrorMessage message={error} onRetry={load} compact />}
 
       {/* Summary row */}
-      {agents.length > 0 && (
+      {safeAgents.length > 0 && (
         <div className="grid grid-cols-3 gap-4">
           <div className="glass rounded-xl p-4">
             <div className="flex items-center gap-2 mb-1">
@@ -223,7 +238,7 @@ export default function AgentPanel() {
       )}
 
       {/* Agent Grid */}
-      {agents.length === 0 ? (
+      {safeAgents.length === 0 ? (
         <div className="flex flex-col items-center justify-center min-h-[300px] gap-4">
           <div className="p-4 rounded-full bg-slate-800/60 border border-slate-700">
             <Cpu className="w-8 h-8 text-slate-600" />
@@ -232,8 +247,8 @@ export default function AgentPanel() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {agents.map((agent) => (
-            <AgentCard key={agent.type} agent={agent} />
+          {safeAgents.map((agent, idx) => (
+            <AgentCard key={agent?.type ?? `agent-${idx}`} agent={agent} />
           ))}
         </div>
       )}
