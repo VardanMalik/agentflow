@@ -21,19 +21,30 @@ Built for production workloads where reliability, traceability, and horizontal s
 
 ## Demo
 
-> Screenshots of the dashboard will be added here.
+### Dashboard
+Real-time system overview with workflow stats, throughput metrics, and component health monitoring.
 
-<p align="center">
-  <img src="docs/screenshots/dashboard.png" alt="Dashboard Overview" width="800">
-  <br>
-  <em>Dashboard — real-time workflow metrics, agent throughput, and system health</em>
-</p>
+![Dashboard](docs/screenshots/dashboard.png)
 
-<p align="center">
-  <img src="docs/screenshots/workflow-detail.png" alt="Workflow Detail" width="800">
-  <br>
-  <em>Workflow Detail — step-by-step execution timeline with status and duration</em>
-</p>
+### Workflow Management
+Create, execute, monitor, and retry workflows with full status tracking.
+
+![Workflows](docs/screenshots/workflows.png)
+
+### Agent Registry
+View all registered AI agent types with per-agent execution metrics, token usage, and success rates.
+
+![Agents](docs/screenshots/agents.png)
+
+### Dead Letter Queue
+Inspect failed workflow steps with full error context, retry, or purge entries.
+
+![Dead Letter Queue](docs/screenshots/dlq.png)
+
+### Interactive API Documentation
+Full OpenAPI / Swagger UI for exploring and testing every endpoint.
+
+![Swagger UI](docs/screenshots/swagger.png)
 
 ## Key Features
 
