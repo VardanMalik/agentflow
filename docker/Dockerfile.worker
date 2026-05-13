@@ -21,6 +21,7 @@ FROM base AS builder
 
 COPY pyproject.toml ./
 COPY src/ ./src/
+COPY README.md ./
 
 RUN pip install --prefix=/install .
 

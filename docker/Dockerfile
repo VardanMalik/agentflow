@@ -21,6 +21,7 @@ FROM base AS builder
 
 COPY pyproject.toml ./
 COPY src/ ./src/
+COPY README.md ./
 
 RUN pip install --prefix=/install .
 
@@ -37,4 +38,7 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
 
-CMD ["uvicorn", "agentflow.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+# Single worker: the workflow/agent/DLQ stores are in-process dicts, so multiple
+# workers would fragment state across processes. Switch to a shared backend
+# (Redis/Postgres) before increasing this.
+CMD ["uvicorn", "agentflow.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
