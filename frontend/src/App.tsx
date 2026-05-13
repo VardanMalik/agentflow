@@ -9,6 +9,7 @@ import WorkflowDetail from './components/WorkflowDetail'
 import AgentPanel from './components/AgentPanel'
 import DLQPanel from './components/DLQPanel'
 import SettingsPanel from './components/SettingsPanel'
+import ErrorBoundary from './components/common/ErrorBoundary'
 import { api } from './api/client'
 
 type View =
@@ -43,15 +44,17 @@ export default function App() {
 
   useEffect(() => {
     const check = async () => {
-      try {
-        const [health, stats] = await Promise.all([api.getHealth(), api.getStats()])
+      const healthRes = await Promise.allSettled([api.getHealth()])
+      const h = healthRes[0]
+      if (h.status === 'fulfilled') {
+        const s = h.value?.status
         setHealthStatus(
-          health.status === 'healthy' ? 'healthy'
-          : health.status === 'degraded' ? 'degraded'
+          s === 'healthy' ? 'healthy'
+          : s === 'degraded' ? 'degraded'
           : 'unhealthy',
         )
-        setDlqCount(stats.dlq_size)
-      } catch {
+        setDlqCount(h.value?.dlq_size ?? 0)
+      } else {
         setHealthStatus('unhealthy')
       }
     }
@@ -200,19 +203,39 @@ export default function App() {
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-5 lg:p-8">
-          {view === 'dashboard' && <Dashboard />}
+          {view === 'dashboard' && (
+            <ErrorBoundary fallbackLabel="Dashboard failed to render">
+              <Dashboard />
+            </ErrorBoundary>
+          )}
           {view === 'workflows' && (
-            <WorkflowList onSelectWorkflow={openWorkflow} />
+            <ErrorBoundary fallbackLabel="Workflows failed to render">
+              <WorkflowList onSelectWorkflow={openWorkflow} />
+            </ErrorBoundary>
           )}
           {view === 'workflow-detail' && selectedWorkflowId && (
-            <WorkflowDetail
-              workflowId={selectedWorkflowId}
-              onBack={() => navigate('workflows')}
-            />
+            <ErrorBoundary fallbackLabel="Workflow detail failed to render">
+              <WorkflowDetail
+                workflowId={selectedWorkflowId}
+                onBack={() => navigate('workflows')}
+              />
+            </ErrorBoundary>
           )}
-          {view === 'agents' && <AgentPanel />}
-          {view === 'dlq' && <DLQPanel />}
-          {view === 'settings' && <SettingsPanel />}
+          {view === 'agents' && (
+            <ErrorBoundary fallbackLabel="Agents failed to render">
+              <AgentPanel />
+            </ErrorBoundary>
+          )}
+          {view === 'dlq' && (
+            <ErrorBoundary fallbackLabel="DLQ failed to render">
+              <DLQPanel />
+            </ErrorBoundary>
+          )}
+          {view === 'settings' && (
+            <ErrorBoundary fallbackLabel="Settings failed to render">
+              <SettingsPanel />
+            </ErrorBoundary>
+          )}
         </main>
       </div>
     </div>
