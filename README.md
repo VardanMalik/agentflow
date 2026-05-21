@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/demo.gif" alt="AgentFlow Demo" width="800"/>
+  <video src="https://github.com/VardanMalik/agentflow/raw/main/docs/screenshots/demo.mp4" width="800" controls></video>
 </p>
 
 ---
