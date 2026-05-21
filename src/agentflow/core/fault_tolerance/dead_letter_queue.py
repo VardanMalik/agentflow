@@ -176,6 +176,27 @@ class DeadLetterQueue:
         )
         return True
 
+    async def remove(self, entry_id: UUID) -> bool:
+        """Remove a single entry from the queue without marking it for retry.
+
+        Args:
+            entry_id: ID of the entry to remove.
+
+        Returns:
+            ``True`` if the entry was found and removed, ``False`` otherwise.
+        """
+        entry = self._index.pop(entry_id, None)
+        if entry is None:
+            return False
+
+        self._entries.remove(entry)
+        self._log.info(
+            "dlq_entry_removed",
+            entry_id=str(entry_id),
+            task_id=entry.task_id,
+        )
+        return True
+
     async def purge(self, older_than: datetime | None = None) -> int:
         """Remove entries from the queue.
 
