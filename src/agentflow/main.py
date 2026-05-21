@@ -30,6 +30,14 @@ _OPENAPI_TAGS = [
         "description": "Aggregated system statistics and health overview.",
     },
     {
+        "name": "dlq",
+        "description": "Inspect and manage the dead-letter queue.",
+    },
+    {
+        "name": "admin",
+        "description": "Administrative and demo-data utilities (debug builds only).",
+    },
+    {
         "name": "websocket",
         "description": "Real-time event streaming over WebSocket connections.",
     },
