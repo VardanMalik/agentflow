@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import enum
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -68,10 +68,10 @@ class StepState:
 
     def mark_running(self) -> None:
         self.status = Status.RUNNING
-        self.started_at = datetime.now(timezone.utc)
+        self.started_at = datetime.now(UTC)
 
     def mark_completed(self, output: dict[str, Any] | None = None) -> None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         self.status = Status.COMPLETED
         self.output_data = output
         self.completed_at = now
@@ -79,7 +79,7 @@ class StepState:
             self.duration_ms = int((now - self.started_at).total_seconds() * 1000)
 
     def mark_failed(self, error: str) -> None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         self.status = Status.FAILED
         self.error = error
         self.completed_at = now
@@ -88,7 +88,7 @@ class StepState:
 
     def mark_cancelled(self) -> None:
         self.status = Status.CANCELLED
-        self.completed_at = datetime.now(timezone.utc)
+        self.completed_at = datetime.now(UTC)
 
     def reset_for_retry(self) -> None:
         self.status = Status.PENDING
@@ -108,13 +108,14 @@ class WorkflowState:
     status: Status = Status.PENDING
     config: dict[str, Any] = field(default_factory=dict)
     steps: list[StepState] = field(default_factory=list)
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     started_at: datetime | None = None
     completed_at: datetime | None = None
 
     # Listeners notified on every status change
     _listeners: list[asyncio.Queue[tuple[UUID, Status]]] = field(
-        default_factory=list, repr=False,
+        default_factory=list,
+        repr=False,
     )
 
     # ---- status helpers ----
@@ -141,22 +142,22 @@ class WorkflowState:
 
     def mark_running(self) -> None:
         self.status = Status.RUNNING
-        self.started_at = datetime.now(timezone.utc)
+        self.started_at = datetime.now(UTC)
         self._emit(Status.RUNNING)
 
     def mark_completed(self) -> None:
         self.status = Status.COMPLETED
-        self.completed_at = datetime.now(timezone.utc)
+        self.completed_at = datetime.now(UTC)
         self._emit(Status.COMPLETED)
 
     def mark_failed(self) -> None:
         self.status = Status.FAILED
-        self.completed_at = datetime.now(timezone.utc)
+        self.completed_at = datetime.now(UTC)
         self._emit(Status.FAILED)
 
     def mark_cancelled(self) -> None:
         self.status = Status.CANCELLED
-        self.completed_at = datetime.now(timezone.utc)
+        self.completed_at = datetime.now(UTC)
         for step in self.steps:
             if not step.status.is_terminal:
                 step.mark_cancelled()
@@ -180,7 +181,7 @@ class WorkflowState:
         return q
 
     def unsubscribe(self, q: asyncio.Queue[tuple[UUID, Status]]) -> None:
-        self._listeners = [l for l in self._listeners if l is not q]
+        self._listeners = [listener for listener in self._listeners if listener is not q]
 
     def _emit(self, new_status: Status) -> None:
         for q in self._listeners:

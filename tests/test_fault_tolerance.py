@@ -4,7 +4,7 @@ DeadLetterQueue, and Bulkhead."""
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
@@ -21,10 +21,10 @@ from agentflow.core.fault_tolerance import (
     RetryPolicy,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _fast_policy(**kwargs: object) -> RetryPolicy:
     """RetryPolicy with zero delay so tests don't sleep."""
@@ -445,11 +445,11 @@ class TestDeadLetterQueue:
         dlq = DeadLetterQueue()
 
         # Add entries with an explicit past timestamp by injecting them directly
-        cutoff = datetime.now(tz=timezone.utc)
+        cutoff = datetime.now(tz=UTC)
 
         old_entry = await dlq.add(task_id="old", error="e", payload={})
         # Backdate the old entry so it falls before the cutoff
-        old_entry.created_at = datetime(2000, 1, 1, tzinfo=timezone.utc)
+        old_entry.created_at = datetime(2000, 1, 1, tzinfo=UTC)
 
         await dlq.add(task_id="new", error="e", payload={})
 

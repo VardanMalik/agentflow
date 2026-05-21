@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
 from uuid import uuid4
 
 import pytest
@@ -21,10 +20,10 @@ from agentflow.core.exceptions import (
 )
 from agentflow.core.state import Status
 
-
 # ---------------------------------------------------------------------------
 # Test agent
 # ---------------------------------------------------------------------------
+
 
 class EchoAgent(BaseAgent):
     """Agent that echoes its input for testing."""
@@ -53,6 +52,7 @@ def _make_engine(*agent_types: str) -> WorkflowEngine:
 # ---------------------------------------------------------------------------
 # Validation
 # ---------------------------------------------------------------------------
+
 
 def test_workflow_validation_empty_name():
     """Workflow with no name fails validation."""
@@ -87,6 +87,7 @@ async def test_engine_rejects_invalid_workflow():
 # Creation & lookup
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_create_workflow():
     """create_workflow returns a pending WorkflowState."""
@@ -112,6 +113,7 @@ async def test_get_workflow_not_found():
 # ---------------------------------------------------------------------------
 # Execution
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_execute_sequential_workflow():
@@ -189,6 +191,7 @@ async def test_execute_missing_agent():
 # Cancel & retry
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_cancel_pending_workflow():
     """Pending workflows can be cancelled."""
@@ -254,6 +257,7 @@ async def test_retry_non_failed_raises():
 # ---------------------------------------------------------------------------
 # Status
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_get_workflow_status():

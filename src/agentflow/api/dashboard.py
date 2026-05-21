@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import structlog
@@ -40,7 +40,10 @@ def _agent_store() -> dict:
 @router.get(
     "/stats",
     summary="System statistics",
-    description="Return aggregated statistics: total workflows, success rate, active agents, and average duration.",
+    description=(
+        "Return aggregated statistics: total workflows, success rate, active agents, "
+        "and average duration."
+    ),
 )
 async def get_stats() -> dict[str, Any]:
     """Compute and return overall system statistics."""
@@ -77,7 +80,7 @@ async def get_stats() -> dict[str, Any]:
         "performance": {
             "avg_workflow_duration_ms": avg_duration_ms,
         },
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -109,7 +112,7 @@ async def get_recent(
             }
             for w in workflows
         ],
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
     }
 
 

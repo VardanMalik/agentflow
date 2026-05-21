@@ -18,10 +18,9 @@ from agentflow.core.engine import (
 from agentflow.core.exceptions import (
     AgentNotFoundError,
     ValidationError,
-    WorkflowNotFoundError,
     WorkflowTimeoutError,
 )
-from agentflow.core.state import Status, WorkflowState
+from agentflow.core.state import WorkflowState
 
 logger = structlog.get_logger()
 
@@ -120,8 +119,8 @@ class Orchestrator:
                     _, new_status = await asyncio.wait_for(q.get(), timeout=deadline)
                     if new_status.is_terminal:
                         return self._engine.get_workflow(workflow_id)
-                except asyncio.TimeoutError:
-                    raise WorkflowTimeoutError(workflow_id, timeout or 0)
+                except TimeoutError as err:
+                    raise WorkflowTimeoutError(workflow_id, timeout or 0) from err
         finally:
             state.unsubscribe(q)
 

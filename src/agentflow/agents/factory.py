@@ -71,10 +71,7 @@ class AgentFactory:
         agent_cls = _AGENT_CLASSES.get(agent_type)
         if agent_cls is None:
             available = ", ".join(sorted(_AGENT_CLASSES))
-            raise ValueError(
-                f"Unknown agent type {agent_type!r}. "
-                f"Available types: {available}"
-            )
+            raise ValueError(f"Unknown agent type {agent_type!r}. Available types: {available}")
         return agent_cls(llm_service=llm_service)
 
     def register_agents(self, registry: AgentRegistry) -> None:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import structlog
@@ -55,7 +55,7 @@ def _get_or_404(workflow_id: UUID) -> dict:
 )
 async def create_workflow(payload: WorkflowCreate) -> WorkflowResponse:
     """Create a new workflow definition."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     workflow_id = uuid4()
 
     steps = [
@@ -195,7 +195,7 @@ async def workflow_events(workflow_id: UUID) -> StreamingResponse:
                         continue
                     payload = json.dumps({"type": item["type"], "data": data})
                     yield f"data: {payload}\n\n"
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     # Keepalive comment to prevent proxy timeouts.
                     yield ": keepalive\n\n"
         finally:
@@ -219,7 +219,7 @@ async def execute_workflow(workflow_id: UUID) -> WorkflowResponse:
             detail=f"Workflow is '{record['status']}', expected 'pending'.",
         )
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     record["status"] = "running"
     record["started_at"] = now
     record["updated_at"] = now
@@ -246,7 +246,7 @@ async def cancel_workflow(workflow_id: UUID) -> WorkflowResponse:
             detail=f"Cannot cancel workflow in '{record['status']}' state.",
         )
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     record["status"] = "cancelled"
     record["completed_at"] = now
     record["updated_at"] = now
@@ -277,11 +277,12 @@ async def retry_workflow(workflow_id: UUID) -> WorkflowResponse:
             detail=f"Can only retry failed or cancelled workflows, not '{record['status']}'.",
         )
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     new_id = uuid4()
+    _step_skip = ("id", "status", "output_data", "error_message", "duration_ms")
     new_steps = [
         {
-            **{k: v for k, v in step.items() if k not in ("id", "status", "output_data", "error_message", "duration_ms")},
+            **{k: v for k, v in step.items() if k not in _step_skip},
             "id": uuid4(),
             "status": "pending",
             "output_data": None,
@@ -290,8 +291,17 @@ async def retry_workflow(workflow_id: UUID) -> WorkflowResponse:
         }
         for step in record["steps"]
     ]
+    _record_skip = (
+        "id",
+        "status",
+        "steps",
+        "created_at",
+        "updated_at",
+        "started_at",
+        "completed_at",
+    )
     new_record = {
-        **{k: v for k, v in record.items() if k not in ("id", "status", "steps", "created_at", "updated_at", "started_at", "completed_at")},
+        **{k: v for k, v in record.items() if k not in _record_skip},
         "id": new_id,
         "status": "pending",
         "steps": new_steps,

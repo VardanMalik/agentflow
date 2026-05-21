@@ -103,18 +103,14 @@ class WriterAgent(BaseAgent):
         tone: str = context.inputs.get("tone", "formal")
         if tone not in _VALID_TONES:
             return AgentResult(
-                error=(
-                    f"Invalid tone {tone!r}. "
-                    f"Must be one of: {', '.join(sorted(_VALID_TONES))}"
-                )
+                error=(f"Invalid tone {tone!r}. Must be one of: {', '.join(sorted(_VALID_TONES))}")
             )
 
         fmt: str = context.inputs.get("format", "article")
         if fmt not in _VALID_FORMATS:
             return AgentResult(
                 error=(
-                    f"Invalid format {fmt!r}. "
-                    f"Must be one of: {', '.join(sorted(_VALID_FORMATS))}"
+                    f"Invalid format {fmt!r}. Must be one of: {', '.join(sorted(_VALID_FORMATS))}"
                 )
             )
 
@@ -136,13 +132,14 @@ class WriterAgent(BaseAgent):
                 "detailed findings, and recommendations."
             ),
             "summary": (
-                "Write a concise summary that captures the most important "
-                "points in 2–4 paragraphs."
+                "Write a concise summary that captures the most important points in 2–4 paragraphs."
             ),
         }[fmt]
 
         tone_guidance = {
-            "formal": "Use formal, professional language appropriate for business or academic audiences.",
+            "formal": (
+                "Use formal, professional language appropriate for business or academic audiences."
+            ),
             "casual": "Use approachable, conversational language that is easy to read.",
             "technical": "Use precise, technical language appropriate for a specialist audience.",
         }[tone]

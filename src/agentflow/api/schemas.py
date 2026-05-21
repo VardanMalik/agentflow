@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Generic, TypeVar
 from uuid import UUID
 
@@ -20,9 +20,7 @@ class PaginatedResponse(BaseModel, Generic[T]):
     """Generic wrapper for paginated list responses."""
 
     model_config = ConfigDict(
-        json_schema_extra={
-            "examples": [{"items": [], "total": 0, "page": 1, "page_size": 20}]
-        }
+        json_schema_extra={"examples": [{"items": [], "total": 0, "page": 1, "page_size": 20}]}
     )
 
     items: list[T]
@@ -49,7 +47,7 @@ class WebSocketMessage(BaseModel):
     type: str = Field(description="Event type, e.g. 'workflow.started'.")
     payload: dict[str, Any] = Field(description="Event-specific data.")
     timestamp: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         description="UTC timestamp when the event was generated.",
     )
 

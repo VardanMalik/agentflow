@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import structlog
@@ -42,7 +42,9 @@ _AGENT_TYPES: list[AgentTypeInfo] = [
     ),
     AgentTypeInfo(
         type="tool",
-        description="Agent that executes deterministic tool calls (e.g. API requests, calculations).",
+        description=(
+            "Agent that executes deterministic tool calls (e.g. API requests, calculations)."
+        ),
         config_schema={"tool_name": "string", "timeout_ms": "integer"},
     ),
     AgentTypeInfo(
@@ -169,7 +171,7 @@ async def test_agent(agent_id: UUID, payload: AgentTestRequest) -> AgentTestResp
     duration_ms = int((time.monotonic() - start) * 1000)
 
     # Record the execution in the history store.
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     execution = {
         "id": uuid4(),
         "agent_id": agent_id,

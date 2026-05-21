@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import random
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 import structlog
 
@@ -51,7 +52,7 @@ class RetryPolicy:
             Delay in seconds, capped at :attr:`max_delay`.
         """
         delay = min(
-            self.base_delay * (self.exponential_base ** attempt),
+            self.base_delay * (self.exponential_base**attempt),
             self.max_delay,
         )
         if self.jitter:
@@ -116,9 +117,7 @@ class RetryExecutor:
                         max_retries=policy.max_retries,
                         error=str(exc),
                     )
-                    raise RetryExhaustedError(
-                        attempts=self.total_attempts, last_error=exc
-                    ) from exc
+                    raise RetryExhaustedError(attempts=self.total_attempts, last_error=exc) from exc
 
                 self.total_retries += 1
                 delay = policy.delay_for(attempt)

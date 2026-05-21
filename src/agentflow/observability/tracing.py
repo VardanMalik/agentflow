@@ -43,8 +43,10 @@ class TracingProvider:
 
         resource = Resource.create({SERVICE_NAME: cfg.service_name})
 
-        sampler = ALWAYS_ON if cfg.sample_rate >= 1.0 else ParentBased(
-            root=TraceIdRatioBased(cfg.sample_rate)
+        sampler = (
+            ALWAYS_ON
+            if cfg.sample_rate >= 1.0
+            else ParentBased(root=TraceIdRatioBased(cfg.sample_rate))
         )
 
         exporter = OTLPSpanExporter(endpoint=cfg.exporter_endpoint)
@@ -76,6 +78,7 @@ def traced(
     Records function arguments as span attributes, captures exceptions,
     and attaches workflow_id / step_id when present in the signature.
     """
+
     def decorator(func: Any) -> Any:
         span_name = name or func.__qualname__
         sig = inspect.signature(func)

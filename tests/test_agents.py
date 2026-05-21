@@ -14,7 +14,6 @@ from agentflow.agents.writer_agent import WriterAgent
 from agentflow.core.engine import AgentRegistry
 from agentflow.services.llm_service import LLMResponse
 
-
 # ===========================================================================
 # ResearchAgent
 # ===========================================================================
@@ -133,9 +132,7 @@ class TestAnalysisAgent:
 
     @pytest.mark.asyncio
     async def test_invalid_analysis_type_returns_error(self, analysis_agent, make_context):
-        context = make_context(
-            inputs={"data": "some data", "analysis_type": "invalid_type"}
-        )
+        context = make_context(inputs={"data": "some data", "analysis_type": "invalid_type"})
         result = await analysis_agent.execute(context)
 
         assert result.error is not None
@@ -349,12 +346,8 @@ class TestWriterAgent:
 
 class TestCodeAgent:
     @pytest.mark.asyncio
-    async def test_valid_requirements_returns_structured_output(
-        self, code_agent, make_context
-    ):
-        context = make_context(
-            inputs={"requirements": "Write a function to add two numbers"}
-        )
+    async def test_valid_requirements_returns_structured_output(self, code_agent, make_context):
+        context = make_context(inputs={"requirements": "Write a function to add two numbers"})
         result = await code_agent.execute(context)
 
         assert result.error is None
@@ -401,9 +394,7 @@ class TestCodeAgent:
             latency_ms=180,
         )
         agent = CodeAgent(llm_service=make_mock_llm(response))
-        context = make_context(
-            inputs={"requirements": "Add two numbers", "language": "javascript"}
-        )
+        context = make_context(inputs={"requirements": "Add two numbers", "language": "javascript"})
         result = await agent.execute(context)
 
         assert result.error is None
@@ -434,9 +425,7 @@ class TestCodeAgent:
 
     @pytest.mark.asyncio
     async def test_invalid_style_returns_error(self, code_agent, make_context):
-        context = make_context(
-            inputs={"requirements": "Write a sorter", "style": "experimental"}
-        )
+        context = make_context(inputs={"requirements": "Write a sorter", "style": "experimental"})
         result = await code_agent.execute(context)
 
         assert result.error is not None
@@ -467,9 +456,7 @@ class TestCodeAgent:
             latency_ms=280,
         )
         agent = CodeAgent(llm_service=make_mock_llm(response))
-        context = make_context(
-            inputs={"requirements": "Add two numbers", "style": "verbose"}
-        )
+        context = make_context(inputs={"requirements": "Add two numbers", "style": "verbose"})
         result = await agent.execute(context)
 
         assert result.error is None
@@ -478,9 +465,7 @@ class TestCodeAgent:
     @pytest.mark.asyncio
     async def test_llm_error_returns_agent_error(self, error_llm_service, make_context):
         agent = CodeAgent(llm_service=error_llm_service)
-        context = make_context(
-            inputs={"requirements": "Write a hello world function"}
-        )
+        context = make_context(inputs={"requirements": "Write a hello world function"})
         result = await agent.execute(context)
 
         assert result.error is not None
@@ -595,9 +580,7 @@ class TestAgentFactory:
 
 class TestErrorHandling:
     @pytest.mark.asyncio
-    async def test_research_agent_propagates_llm_error(
-        self, error_llm_service, make_context
-    ):
+    async def test_research_agent_propagates_llm_error(self, error_llm_service, make_context):
         agent = ResearchAgent(llm_service=error_llm_service)
         result = await agent.execute(make_context(inputs={"topic": "AI"}))
 
@@ -606,9 +589,7 @@ class TestErrorHandling:
         assert "rate limit" in result.error.lower() or "LLM error" in result.error
 
     @pytest.mark.asyncio
-    async def test_analysis_agent_propagates_llm_error(
-        self, error_llm_service, make_context
-    ):
+    async def test_analysis_agent_propagates_llm_error(self, error_llm_service, make_context):
         agent = AnalysisAgent(llm_service=error_llm_service)
         result = await agent.execute(make_context(inputs={"data": "numbers"}))
 
@@ -616,9 +597,7 @@ class TestErrorHandling:
         assert result.output is None
 
     @pytest.mark.asyncio
-    async def test_writer_agent_propagates_llm_error(
-        self, error_llm_service, make_context
-    ):
+    async def test_writer_agent_propagates_llm_error(self, error_llm_service, make_context):
         agent = WriterAgent(llm_service=error_llm_service)
         result = await agent.execute(make_context(inputs={"brief": "Write content"}))
 
@@ -626,21 +605,15 @@ class TestErrorHandling:
         assert result.output is None
 
     @pytest.mark.asyncio
-    async def test_code_agent_propagates_llm_error(
-        self, error_llm_service, make_context
-    ):
+    async def test_code_agent_propagates_llm_error(self, error_llm_service, make_context):
         agent = CodeAgent(llm_service=error_llm_service)
-        result = await agent.execute(
-            make_context(inputs={"requirements": "Write code"})
-        )
+        result = await agent.execute(make_context(inputs={"requirements": "Write code"}))
 
         assert result.error is not None
         assert result.output is None
 
     @pytest.mark.asyncio
-    async def test_agent_result_has_no_usage_on_error(
-        self, error_llm_service, make_context
-    ):
+    async def test_agent_result_has_no_usage_on_error(self, error_llm_service, make_context):
         """On LLM failure, the agent should not expose misleading token counts."""
         agent = ResearchAgent(llm_service=error_llm_service)
         result = await agent.execute(make_context(inputs={"topic": "Python"}))

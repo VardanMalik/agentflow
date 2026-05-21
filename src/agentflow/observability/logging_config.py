@@ -69,9 +69,7 @@ def configure_logging(
 
     use_json = json_output or environment == "production"
     renderer: Any = (
-        structlog.processors.JSONRenderer()
-        if use_json
-        else structlog.dev.ConsoleRenderer()
+        structlog.processors.JSONRenderer() if use_json else structlog.dev.ConsoleRenderer()
     )
 
     structlog.configure(

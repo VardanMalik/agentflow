@@ -218,6 +218,7 @@ class LLMService:
 # Private helpers
 # ---------------------------------------------------------------------------
 
+
 def _elapsed_ms(start: float) -> int:
     """Return milliseconds elapsed since *start* (from :func:`time.monotonic`)."""
     return int((time.monotonic() - start) * 1000)

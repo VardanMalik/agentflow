@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import functools
 import time
-from typing import Any, Callable, TypeVar
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 import structlog
 from celery import Task as CeleryTask
@@ -35,7 +36,9 @@ class BaseTask(CeleryTask):
         settings = get_settings()
         return settings.celery_task_max_retries
 
-    def on_failure(self, exc: Exception, task_id: str, args: tuple, kwargs: dict, einfo: Any) -> None:
+    def on_failure(
+        self, exc: Exception, task_id: str, args: tuple, kwargs: dict, einfo: Any
+    ) -> None:
         logger.error(
             "Task failed",
             task_name=self.name,

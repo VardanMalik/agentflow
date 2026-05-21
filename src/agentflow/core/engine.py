@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import time
 from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID, uuid4
@@ -12,12 +11,10 @@ import structlog
 
 from agentflow.agents.base import AgentContext, AgentResult, BaseAgent
 from agentflow.core.exceptions import (
-    AgentNotFoundError,
     StepError,
     ValidationError,
     WorkflowNotFoundError,
     WorkflowStateError,
-    WorkflowTimeoutError,
 )
 from agentflow.core.state import Status, StepState, WorkflowState, can_transition
 
@@ -27,6 +24,7 @@ logger = structlog.get_logger()
 # ---------------------------------------------------------------------------
 # Workflow definition (input)
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class StepDefinition:
@@ -63,6 +61,7 @@ class WorkflowDefinition:
 # Step result (output)
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class StepResult:
     """Result of executing a single workflow step."""
@@ -77,6 +76,7 @@ class StepResult:
 # ---------------------------------------------------------------------------
 # Agent registry
 # ---------------------------------------------------------------------------
+
 
 class AgentRegistry:
     """Registry mapping agent type strings to BaseAgent instances."""
@@ -101,6 +101,7 @@ class AgentRegistry:
 # ---------------------------------------------------------------------------
 # Workflow Engine
 # ---------------------------------------------------------------------------
+
 
 class WorkflowEngine:
     """Core engine that creates, executes, and manages workflows.
@@ -219,9 +220,7 @@ class WorkflowEngine:
                         )
                         return state
                     # Merge parallel outputs
-                    previous_output = {
-                        str(r.step_id): r.output for r in results
-                    }
+                    previous_output = {str(r.step_id): r.output for r in results}
 
             if state.status == Status.RUNNING:
                 state.mark_completed()
@@ -326,7 +325,9 @@ class WorkflowEngine:
                     duration_ms=step.duration_ms,
                 )
 
-            step.mark_completed(result.output if isinstance(result.output, dict) else {"result": result.output})
+            step.mark_completed(
+                result.output if isinstance(result.output, dict) else {"result": result.output}
+            )
             return StepResult(
                 step_id=step.id,
                 status="completed",
@@ -355,9 +356,7 @@ class WorkflowEngine:
         previous_output: dict[str, Any] | None,
     ) -> list[StepResult]:
         """Execute a batch of steps concurrently."""
-        tasks = [
-            self._execute_step(workflow, step, previous_output) for step in steps
-        ]
+        tasks = [self._execute_step(workflow, step, previous_output) for step in steps]
         return list(await asyncio.gather(*tasks))
 
     # ---- State machine ----

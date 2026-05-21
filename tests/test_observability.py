@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -171,7 +170,7 @@ class TestTracingProvider:
         with (
             patch("agentflow.observability.tracing.OTLPSpanExporter") as mock_exporter,
             patch("agentflow.observability.tracing.SDKTracerProvider") as mock_provider_cls,
-            patch("agentflow.observability.tracing.BatchSpanProcessor") as mock_processor,
+            patch("agentflow.observability.tracing.BatchSpanProcessor"),
             patch("agentflow.observability.tracing.trace") as mock_trace,
         ):
             from agentflow.observability.tracing import TracingConfig, TracingProvider
@@ -257,8 +256,6 @@ class TestTracingProvider:
         mock_tracer.start_as_current_span.return_value = mock_span
 
         with patch("agentflow.observability.tracing.trace") as mock_trace:
-            from opentelemetry.trace import StatusCode
-
             mock_trace.get_tracer.return_value = mock_tracer
 
             from agentflow.observability.tracing import traced

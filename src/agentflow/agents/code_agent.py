@@ -102,8 +102,7 @@ class CodeAgent(BaseAgent):
         if style not in _VALID_STYLES:
             return AgentResult(
                 error=(
-                    f"Invalid style {style!r}. "
-                    f"Must be one of: {', '.join(sorted(_VALID_STYLES))}"
+                    f"Invalid style {style!r}. Must be one of: {', '.join(sorted(_VALID_STYLES))}"
                 )
             )
 

@@ -55,10 +55,12 @@ class Workflow(Base):
     config: Mapped[dict[str, Any] | None] = mapped_column(JSONB, default=None)
     created_by: Mapped[str | None] = mapped_column(String(255), default=None)
     started_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), default=None,
+        DateTime(timezone=True),
+        default=None,
     )
     completed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), default=None,
+        DateTime(timezone=True),
+        default=None,
     )
 
     # Relationships
@@ -68,7 +70,7 @@ class Workflow(Base):
         order_by="WorkflowStep.step_order",
         lazy="selectin",
     )
-    tasks: Mapped[list["Task"]] = relationship(  # noqa: F821
+    tasks: Mapped[list[Task]] = relationship(  # noqa: F821
         back_populates="workflow",
         cascade="all, delete-orphan",
         lazy="selectin",
@@ -117,7 +119,7 @@ class WorkflowStep(Base):
 
     # Relationships
     workflow: Mapped[Workflow] = relationship(back_populates="steps")
-    executions: Mapped[list["AgentExecution"]] = relationship(  # noqa: F821
+    executions: Mapped[list[AgentExecution]] = relationship(  # noqa: F821
         back_populates="workflow_step",
         cascade="all, delete-orphan",
         lazy="selectin",

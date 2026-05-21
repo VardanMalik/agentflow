@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 import structlog
 
@@ -115,7 +116,7 @@ class Bulkhead:
                     self._semaphore.acquire(),
                     timeout=self._cfg.timeout,
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError as err:
                 async with self._lock:
                     self._queued_count -= 1
                 self._log.warning(
@@ -124,7 +125,7 @@ class Bulkhead:
                     active=self._active_count,
                     queued=self._queued_count,
                 )
-                raise BulkheadFullError(self._name)
+                raise BulkheadFullError(self._name) from err
 
             async with self._lock:
                 self._queued_count -= 1

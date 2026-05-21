@@ -48,9 +48,7 @@ class Agent(Base):
     """A registered AI agent that can execute workflow steps."""
 
     __tablename__ = "agents"
-    __table_args__ = (
-        Index("ix_agents_type_active", "type", "is_active"),
-    )
+    __table_args__ = (Index("ix_agents_type_active", "type", "is_active"),)
 
     name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     type: Mapped[AgentType] = mapped_column(
@@ -98,16 +96,18 @@ class AgentExecution(Base):
     output_tokens: Mapped[int] = mapped_column(Integer, default=0)
     llm_model: Mapped[str | None] = mapped_column(String(100), default=None)
     started_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), default=None,
+        DateTime(timezone=True),
+        default=None,
     )
     completed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), default=None,
+        DateTime(timezone=True),
+        default=None,
     )
     error: Mapped[str | None] = mapped_column(Text, default=None)
 
     # Relationships
     agent: Mapped[Agent] = relationship(back_populates="executions")
-    workflow_step: Mapped["WorkflowStep"] = relationship(  # noqa: F821
+    workflow_step: Mapped[WorkflowStep] = relationship(  # noqa: F821
         back_populates="executions",
     )
 

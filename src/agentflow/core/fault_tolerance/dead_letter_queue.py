@@ -2,15 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import structlog
-
-if TYPE_CHECKING:
-    pass
 
 logger = structlog.get_logger(__name__)
 
@@ -101,9 +97,7 @@ class DeadLetterQueue:
                 max_size=self._max_size,
                 task_id=task_id,
             )
-            raise OverflowError(
-                f"Dead-letter queue is full (max_size={self._max_size})"
-            )
+            raise OverflowError(f"Dead-letter queue is full (max_size={self._max_size})")
 
         entry = DeadLetterEntry(
             id=uuid4(),
@@ -111,7 +105,7 @@ class DeadLetterQueue:
             workflow_id=workflow_id,
             error=error,
             payload=payload,
-            created_at=datetime.now(tz=timezone.utc),
+            created_at=datetime.now(tz=UTC),
             retry_count=retry_count,
             max_retries_reached=max_retries_reached,
         )

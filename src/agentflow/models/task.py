@@ -65,11 +65,12 @@ class Task(Base):
     retry_count: Mapped[int] = mapped_column(Integer, default=0)
     max_retries: Mapped[int] = mapped_column(Integer, default=3)
     deadline: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), default=None,
+        DateTime(timezone=True),
+        default=None,
     )
 
     # Relationships
-    workflow: Mapped["Workflow"] = relationship(back_populates="tasks")  # noqa: F821
+    workflow: Mapped[Workflow] = relationship(back_populates="tasks")  # noqa: F821
 
     @property
     def can_retry(self) -> bool:

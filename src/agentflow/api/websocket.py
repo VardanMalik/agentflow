@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import structlog
@@ -78,9 +78,7 @@ class ConnectionManager:
         targets = list(self._global) + list(self._rooms.get(workflow_id, []))
         await self._send_to_many(targets, message)
 
-    async def _send_to_many(
-        self, connections: list[WebSocket], message: dict[str, Any]
-    ) -> None:
+    async def _send_to_many(self, connections: list[WebSocket], message: dict[str, Any]) -> None:
         failed: list[WebSocket] = []
         for ws in connections:
             try:
@@ -166,7 +164,7 @@ def _make_ws_handler(event_type: str) -> _EventCallback:
         msg = WebSocketMessage(
             type=event_type,
             payload=data,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
         )
         serialised = msg.model_dump(mode="json")
         workflow_id = data.get("workflow_id")

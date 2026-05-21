@@ -6,7 +6,7 @@ import time
 from typing import Any
 
 import structlog
-from celery import chain, group
+from celery import chain
 
 from agentflow.core.celery_app import celery_app
 from agentflow.core.tasks import BaseTask, handle_task_errors, timed_task
@@ -49,9 +49,7 @@ def execute_workflow(self: BaseTask, workflow_id: str) -> dict[str, Any]:
         return {"workflow_id": workflow_id, "status": "completed", "steps_executed": 0}
 
     # Build a chain: each step feeds its result into the next
-    step_chain = chain(
-        execute_step.s(workflow_id=workflow_id, step=step) for step in steps
-    )
+    step_chain = chain(execute_step.s(workflow_id=workflow_id, step=step) for step in steps)
     step_chain.apply_async(
         link=cleanup_workflow.si(workflow_id=workflow_id, status="completed"),
         link_error=cleanup_workflow.si(workflow_id=workflow_id, status="failed"),
