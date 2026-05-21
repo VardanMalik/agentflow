@@ -24,10 +24,15 @@ router = APIRouter(tags=["health"])
 async def health_check() -> HealthResponse:
     """Return application health status."""
     settings = get_settings()
+
+    # Reflect the live dead-letter queue depth so the dashboard stays accurate.
+    from agentflow.api.dlq import _dlq_store
+
     return HealthResponse(
         status="healthy",
         version=settings.app_version,
         environment=settings.environment,
+        dlq_size=await _dlq_store.size(),
     )
 
 

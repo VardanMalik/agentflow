@@ -501,13 +501,24 @@ class HealthResponse(BaseModel):
 
     model_config = ConfigDict(
         json_schema_extra={
-            "examples": [{"status": "healthy", "version": "0.1.0", "environment": "development"}]
+            "examples": [
+                {
+                    "status": "healthy",
+                    "version": "0.1.0",
+                    "environment": "development",
+                    "dlq_size": 0,
+                }
+            ]
         }
     )
 
     status: str = Field(description="Overall health status.")
     version: str
     environment: str
+    dlq_size: int = Field(
+        default=0,
+        description="Current number of entries in the dead-letter queue.",
+    )
 
 
 class ReadinessResponse(BaseModel):
