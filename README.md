@@ -13,9 +13,7 @@
   </p>
 </p>
 
-<p align="center">
-  <video src="https://github.com/VardanMalik/agentflow/raw/main/docs/screenshots/demo.mp4" width="800" controls></video>
-</p>
+https://github.com/user-attachments/assets/f61e6aae-5558-45b8-8b84-5c163ce82fbc
 
 ---
 
