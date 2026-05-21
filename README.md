@@ -13,38 +13,23 @@
   </p>
 </p>
 
+<p align="center">
+  <img src="docs/screenshots/demo.gif" alt="AgentFlow Demo" width="800"/>
+</p>
+
 ---
 
 AgentFlow is a distributed platform for orchestrating multiple AI agents through complex, multi-step workflows. It combines a FastAPI backend with Celery-based distributed task execution, fault-tolerant design patterns (retry, circuit breaker, bulkhead, dead-letter queue), and full observability via OpenTelemetry and Prometheus. A React + TypeScript dashboard provides real-time visibility into workflow execution, agent status, and system health.
 
 Built for production workloads where reliability, traceability, and horizontal scalability are non-negotiable.
 
-## Demo
+## Why I built this
 
-### Dashboard
-Real-time system overview with workflow stats, throughput metrics, and component health monitoring.
+Multi-agent AI workflows are quickly becoming a common building block, but most of the tooling around them still feels like prototypes. Frameworks like LangChain and LangGraph are great for getting an idea working, yet they leave the harder operational questions — what happens when an agent call times out, how do you trace a failure across steps, how does the system behave under a partial outage — largely up to you.
 
-![Dashboard](docs/screenshots/dashboard.png)
+I built AgentFlow to explore what those answers look like when agent orchestration is treated as production infrastructure rather than a demo. That meant focusing on the unglamorous parts: retry semantics with exponential backoff, circuit breakers and bulkheads for graceful degradation, a dead-letter queue for failures that exhaust their retries, and end-to-end observability through distributed tracing, metrics, and structured logs.
 
-### Workflow Management
-Create, execute, monitor, and retry workflows with full status tracking.
-
-![Workflows](docs/screenshots/workflows.png)
-
-### Agent Registry
-View all registered AI agent types with per-agent execution metrics, token usage, and success rates.
-
-![Agents](docs/screenshots/agents.png)
-
-### Dead Letter Queue
-Inspect failed workflow steps with full error context, retry, or purge entries.
-
-![Dead Letter Queue](docs/screenshots/dlq.png)
-
-### Interactive API Documentation
-Full OpenAPI / Swagger UI for exploring and testing every endpoint.
-
-![Swagger UI](docs/screenshots/swagger.png)
+This is a portfolio project, so it's deliberately scoped — but the goal was to demonstrate distributed systems thinking and backend engineering depth, not just to wire up an LLM. If it's also useful as a reference for how these patterns fit together, even better.
 
 ## Key Features
 
