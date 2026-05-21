@@ -104,10 +104,12 @@ export interface HealthStatus {
 
 export interface RecentActivity {
   id: string
-  workflow_id: string
-  workflow_name: string
-  event: string
-  timestamp: string
+  workflow_id?: string
+  name?: string
+  workflow_name?: string
+  event?: string
+  timestamp?: string
+  created_at?: string
   status: string
 }
 

@@ -242,25 +242,30 @@ export default function Dashboard() {
                 {errors.activity ?? 'No recent activity'}
               </p>
             ) : (
-              (activity ?? []).map((item, idx) => (
-                <div
-                  key={`${item?.id ?? idx}-${idx}`}
-                  className="flex items-center gap-3 py-3 border-b border-slate-800/60 last:border-0 table-row-hover -mx-2 px-2 rounded-lg"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm text-slate-200 font-medium truncate">
-                      {item?.workflow_name ?? 'Unknown workflow'}
-                    </p>
-                    <p className="text-xs text-slate-500 mt-0.5">{item?.event ?? ''}</p>
+              (activity ?? []).map((item, idx) => {
+                const ts = item?.created_at ?? item?.timestamp ?? null
+                return (
+                  <div
+                    key={`${item?.id ?? idx}-${idx}`}
+                    className="flex items-center gap-3 py-3 border-b border-slate-800/60 last:border-0 table-row-hover -mx-2 px-2 rounded-lg"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-slate-200 font-medium truncate">
+                        {item?.name ?? item?.workflow_name ?? 'Unknown workflow'}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-0.5 capitalize">
+                        {item?.event ?? item?.status ?? ''}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <StatusBadge status={item?.status ?? 'unknown'} size="sm" />
+                      <span className="text-xs text-slate-600 font-mono">
+                        {ts ? formatTime(ts) : ''}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <StatusBadge status={item?.status ?? 'unknown'} size="sm" />
-                    <span className="text-xs text-slate-600 font-mono">
-                      {item?.timestamp ? formatTime(item.timestamp) : ''}
-                    </span>
-                  </div>
-                </div>
-              ))
+                )
+              })
             )}
           </div>
         </div>
