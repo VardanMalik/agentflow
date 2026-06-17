@@ -1,5 +1,5 @@
 # ---------- base ----------
-FROM python:3.11-slim AS base
+FROM python:3.14-slim AS base
 
 LABEL org.opencontainers.image.title="AgentFlow API" \
       org.opencontainers.image.description="Distributed AI Agent Orchestration Platform - API Service" \
